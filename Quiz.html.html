@@ -1,0 +1,593 @@
+
+
+
+
+<!DOCTYPE html>
+<html lang="hi">
+<head> 
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CBT Mock Test Template – MCQ with Timer</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #f6f7fb; }
+    .app { max-width: 900px; margin: 0 auto; padding: 16px; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 6px 24px rgba(0,0,0,0.08); padding: 18px; margin: 14px 0; }
+    h1, h2, h3 { margin: 8px 0 12px; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .row > * { flex: 1; min-width: 220px; }
+    label { display: block; font-size: 14px; margin: 6px 0; }
+    input[type="number"], input[type="text"], textarea, select {
+      width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d7dbe6; background: #fafbff;
+    }
+    button {
+      border: 0; padding: 10px 14px; border-radius: 10px; cursor: pointer;
+    }
+    .btn-primary { background: #3a6df0; color: #fff; }
+    .btn-ghost { background: #eef1fb; }
+    .btn-danger { background: #ff5a5f; color: #fff; }
+    .tag { display:inline-block; background:#eef1fb; padding:4px 8px; border-radius: 999px; font-size:12px; margin-right:6px; }
+    .muted { color: #6b7280; }
+    .question { font-size: 18px; line-height: 1.4; }
+    .options { display: grid; gap: 10px; margin-top: 10px; }
+    .option { border: 1px solid #d7dbe6; padding: 10px; border-radius: 10px; cursor: pointer; }
+    .option.selected { outline: 2px solid #3a6df0; background: #f0f4ff; }
+    .option.correct { border-color: #22c55e; background: #ecfdf5; }
+    .option.wrong { border-color: #ef4444; background: #fef2f2; }
+    .flex { display:flex; align-items:center; gap:10px; flex-wrap: wrap; }
+    .between { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap: wrap; }
+    .timer { font-variant-numeric: tabular-nums; font-size: 18px; padding: 6px 10px; border-radius: 8px; background: #0ea5e9; color:#fff; }
+    .timer.secondary { background:#6366f1; }
+    .grid { display:grid; gap:10px; grid-template-columns: repeat(auto-fill, minmax(42px, 1fr)); }
+    .qbtn { padding:8px; border-radius:10px; border:1px solid #d7dbe6; background:#fff; cursor:pointer; }
+    .qbtn.answered { background:#d1fae5; border-color:#34d399; }
+    .qbtn.current { background:#e0e7ff; border-color:#6366f1; }
+    .kbd { font-family: ui-monospace, Menlo, monospace; background:#eee; padding:2px 6px; border-radius:6px; font-size:12px; }
+    .hidden { display:none; }
+    .foot { font-size:12px; color:#6b7280; }
+    .pill { padding: 6px 10px; border-radius: 999px; background:#f1f5f9; }
+    .danger { color:#b91c1c; }
+    .good { color:#065f46; }
+    .table { width:100%; border-collapse: collapse; }
+    .table th, .table td { border:1px solid #e5e7eb; padding:8px; text-align:left; }
+    .table th { background:#f8fafc; }
+    .exp { background:#f8fafc; padding:8px; border-radius:8px; }
+    .small { font-size: 13px; }
+    .sticky-footer { position: sticky; bottom: 0; padding: 10px; background: #fff; border-top: 1px solid #e5e7eb; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+    .progress { height:10px; background:#e5e7eb; border-radius:999px; overflow:hidden; }
+    .progress > div { height:100%; background:#3a6df0; width:0%; }
+    .nowrap { white-space: nowrap; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="card" id="home">
+    <h1>CBT Mock Test Template</h1>
+    <p class="muted">Photo se MCQ extract karne ke baad inhe yahan paste/enter karein. Ye template <b>offline</b> browser me bhi chalega. </p>
+
+    <div class="row">
+      <div>
+        <label><b>Per-question timer</b> (seconds)</label>
+        <input id="perQuestionSeconds" type="number" value="30" min="5" max="600" />
+      </div>
+      <div>
+        <label><b>Total test timer</b> (minutes)</label>
+        <input id="totalMinutes" type="number" value="10" min="0" max="300" />
+        <span class="small muted">0 ka matlab: total timer off</span>
+      </div>
+      <div>
+        <label><b>Negative marking per wrong</b> (e.g. 0.25)</label>
+        <input id="negMark" type="number" step="0.01" value="0" min="0" max="5" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label><input id="shuffleQ" type="checkbox" checked /> Questions shuffle karein</label>
+        <label><input id="shuffleO" type="checkbox" checked /> Options shuffle karein</label>
+        <label><input id="saveProgress" type="checkbox" checked /> Progress auto-save (local)</label>
+      </div>
+      <div>
+        <label><b>Quiz ID</b> (progress save ke liye)</label>
+        <input id="quizId" type="text" value="v1-demo" />
+        <span class="small muted">Alag sets ke liye ID badal dein.</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Questions (JSON)</h3>
+      <p class="small muted">
+        Format: <code>[{ "q": "Question text", "options": ["A","B","C","D"], "answer": 2, "explain": "Why C is correct" }, ...]</code><br/>
+        <b>answer</b> 0-based index hota hai (0=A, 1=B, 2=C, 3=D).
+      </p>
+      <textarea id="qjson" rows="12">[
+  {
+    "q": "भारत का राष्ट्रीय पशु कौन सा है?",
+    "options": ["शेर", "हिरण", "बाघ", "चीतah"],
+    "answer": 2,
+    "explain": "भारत का राष्ट्रीय पशु बाघ है।"
+  },
+  {
+    "q": "sin(30°) का मान क्या है?",
+    "options": ["1/2", "√3/2", "0", "1"],
+    "answer": 0,
+    "explain": "मानक त्रिकोणमिति मान: sin 30° = 0.5"
+  },
+  {
+    "q": "CPU का पूरा नाम क्या है?",
+    "options": ["Central Process Unit", "Central Processing Unit", "Control Processing Unit", "Compute Process Unit"],
+    "answer": 1,
+    "explain": "सही नाम: Central Processing Unit."
+  }
+]</textarea>
+      <div class="flex">
+        <button class="btn-ghost" id="validateBtn">Validate</button>
+        <span id="validateMsg" class="small muted"></span>
+      </div>
+    </div>
+
+    <div class="between">
+      <div class="foot">
+        ⌨️ Shortcuts: <span class="kbd">1-4</span> विकल्प, <span class="kbd">N</span> Next, <span class="kbd">P</span> Prev, <span class="kbd">S</span> Submit
+      </div>
+      <div class="flex">
+        <button class="btn-primary" id="startBtn">Start Test</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="test">
+    <div class="between">
+      <div class="flex">
+        <span class="tag" id="qidTag">Q 1 / 1</span>
+        <span class="pill">Neg Mark: <span id="negTag">0</span></span>
+        <span class="pill nowrap">Attempted: <span id="attemptedTag">0</span></span>
+      </div>
+      <div class="flex">
+        <span class="timer secondary hidden" id="totalTimer">--:--</span>
+        <span class="timer" id="qTimer">--</span>
+      </div>
+    </div>
+
+    <div class="progress"><div id="progBar"></div></div>
+
+    <div style="margin-top:10px;">
+      <div class="question" id="qtext">Question text</div>
+      <div class="options" id="opts"></div>
+    </div>
+
+    <div class="between sticky-footer">
+      <div class="flex">
+        <button class="btn-ghost" id="markClearBtn">Clear</button>
+        <button class="btn-ghost" id="prevBtn">Prev</button>
+        <button class="btn-ghost" id="nextBtn">Next</button>
+      </div>
+      <div class="flex">
+        <button class="btn-danger" id="submitBtn">Submit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Question Palette</h3>
+      <div class="grid" id="palette"></div>
+    </div>
+  </div>
+
+  <div class="card hidden" id="result">
+    <h2>Result</h2>
+    <div class="row">
+      <div class="card">
+        <div><b>Score:</b> <span id="scoreOut">0</span></div>
+        <div><b>Correct:</b> <span id="correctOut">0</span> | <b>Wrong:</b> <span id="wrongOut">0</span> | <b>Unattempted:</b> <span id="unattemptedOut">0</span></div>
+        <div><b>Accuracy:</b> <span id="accOut">0%</span></div>
+        <div><b>Time Taken:</b> <span id="timeOut">--</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Review Answers</h3>
+      <table class="table" id="reviewTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Question</th>
+            <th>Your Ans</th>
+            <th>Correct</th>
+            <th>Result</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>Explanations</h3>
+      <div id="explanations"></div>
+    </div>
+
+    <div class="between">
+      <button class="btn-ghost" onclick="location.reload()">New Test</button>
+      <button class="btn-primary" id="exportBtn">Export Result (JSON)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ====== Utilities ======
+  const $ = (id)=>document.getElementById(id);
+  const fmtTime = (sec)=>{
+    const m = Math.floor(sec/60).toString().padStart(2,'0');
+    const s = Math.floor(sec%60).toString().padStart(2,'0');
+    return m+':'+s;
+  };
+  const shuffle = (arr)=>{
+    const a = [...arr];
+    for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+    return a;
+  };
+
+  // ====== State ======
+  let questions = [];
+  let answers = []; // index chosen or null
+  let order = [];   // question order
+  let optionOrders = {}; // per question, shuffled option indices
+  let qIndex = 0;
+  let perQ = 30;
+  let totalMin = 10;
+  let neg = 0;
+  let totalLeft = 0;
+  let qLeft = 0;
+  let totalTimerId = null;
+  let qTimerId = null;
+  let startedAt = null;
+  let quizId = "v1-demo";
+  let saveProgress = true;
+
+  // ====== DOM Elements ======
+  const home = $("home"), test = $("test"), result = $("result");
+  const qtext = $("qtext"), opts = $("opts"), qidTag = $("qidTag"), attemptedTag = $("attemptedTag");
+  const qTimer = $("qTimer"), totalTimer = $("totalTimer"), negTag = $("negTag"), progBar = $("progBar");
+  const palette = $("palette");
+
+  // ====== Validation ======
+  $("validateBtn").addEventListener("click", ()=>{
+    try {
+      const data = JSON.parse($("qjson").value.trim());
+      if(!Array.isArray(data) || !data.length) throw new Error("Array of questions expected");
+      for(const [i,q] of data.entries()){
+        if(typeof q.q!=="string" || !Array.isArray(q.options) || q.options.length<2) {
+          throw new Error("Invalid at index "+i);
+        }
+        if(typeof q.answer!=="number" || q.answer<0 || q.answer>=q.options.length){
+          throw new Error("Bad answer index at "+i);
+        }
+      }
+      $("validateMsg").textContent = "Looks good ✓ ("+data.length+" questions)";
+    } catch(e){
+      $("validateMsg").textContent = "Error: "+e.message;
+    }
+  });
+
+  // ====== Load from Home & Start ======
+  $("startBtn").addEventListener("click", ()=>{
+    try {
+      const data = JSON.parse($("qjson").value.trim());
+      if(!Array.isArray(data) || !data.length) throw new Error("Invalid questions JSON.");
+      perQ = Math.max(5, Number($("perQuestionSeconds").value) || 30);
+      totalMin = Math.max(0, Number($("totalMinutes").value) || 0);
+      neg = Math.max(0, Number($("negMark").value) || 0);
+      quizId = ($("quizId").value || "v1-demo").trim();
+      saveProgress = $("saveProgress").checked;
+
+      questions = data.map(q => ({
+        q: q.q, options: [...q.options], answer: q.answer, explain: q.explain || ""
+      }));
+
+      // Question order
+      order = [...questions.keys()];
+      if($("shuffleQ").checked) order = shuffle(order);
+
+      // Option orders per question
+      optionOrders = {};
+      for(const idx of order){
+        const optIdx = [...questions[idx].options.keys()];
+        optionOrders[idx] = $("shuffleO").checked ? shuffle(optIdx) : optIdx;
+      }
+
+      answers = Array(questions.length).fill(null);
+      qIndex = 0;
+      totalLeft = totalMin>0 ? totalMin*60 : 0;
+      qLeft = perQ;
+      negTag.textContent = neg.toString();
+      startedAt = Date.now();
+
+      // UI
+      home.classList.add("hidden");
+      test.classList.remove("hidden");
+      result.classList.add("hidden");
+      totalTimer.classList.toggle("hidden", totalMin===0);
+
+      renderQuestion();
+      renderPalette();
+      updateHeader();
+      runTimers();
+      if(saveProgress) restoreSaved();
+    } catch(err){
+      alert("Error starting test: "+err.message);
+    }
+  });
+
+  function renderQuestion(){
+    const qi = order[qIndex];
+    const q = questions[qi];
+    const oidx = optionOrders[qi];
+    
+
+    qtext.textContent = q.q;
+    opts.innerHTML = "";
+    oidx.forEach((optOriginalIndex, i)=>{
+      const div = document.createElement("div");
+      div.className = "option";
+      div.tabIndex = 0;
+      div.innerHTML = `<b>${String.fromCharCode(65+i)}.</b> $
+      
+      
+      {q.options[optOriginalIndex]}`;
+      div.addEventListener("click", ()=>selectOption(i));
+      if(answers[qi] !== null){
+        const chosenOriginal = optionOrders[qi][answers[qi]];
+        if(i===answers[qi]) div.classList.add("selected");
+        // show correctness only after submit
+      }
+      opts.appendChild(div);
+    });
+    updateHeader();
+    highlightPalette();
+  }
+
+  function updateHeader(){
+    qidTag.textContent = `Q ${qIndex+1} / ${questions.length}`;
+    const attempted = answers.filter(a=>a!==null).length;
+    attemptedTag.textContent = attempted;
+    const pct = Math.round(((qIndex) / (questions.length-1))*100);
+    progBar.style.width = (questions.length>1 ? pct : 0) + "%";
+  }
+
+  function selectOption(i){
+    const qi = order[qIndex];
+    answers[qi] = i;
+    renderQuestion();
+    highlightPalette();
+    persist();
+  }
+
+  // timers
+  function runTimers(){
+    // clear existing
+    if(totalTimerId) clearInterval(totalTimerId);
+    if(qTimerId) clearInterval(qTimerId);
+
+    // total
+    if(totalMin>0){
+      totalTimerId = setInterval(()=>{
+        totalLeft--;
+        if(totalLeft<0){ totalLeft = 0; submitTest(); }
+        totalTimer.textContent = fmtTime(totalLeft);
+      }, 1000);
+      totalTimer.textContent = fmtTime(totalLeft);
+    }
+
+    // per question
+    qLeft = perQ;
+    qTimerId = setInterval(()=>{
+      qLeft--;
+      if(qLeft<=0){
+        qLeft = perQ;
+        goNext(true); // auto next on timeout
+      }
+      qTimer.textContent = qLeft.toString().padStart(2,'0');
+    }, 1000);
+    qTimer.textContent = qLeft.toString().padStart(2,'0');
+  }
+
+  function goPrev(){
+    if(qIndex>0){ qIndex--; renderQuestion(); qLeft = perQ; }
+  }
+  function goNext(auto=false){
+    if(qIndex<questions.length-1){
+      qIndex++; renderQuestion(); qLeft = perQ;
+    } else if(auto){
+      // last question timeout -> stay, or auto-submit? choose stay
+    }
+  }
+
+  $("prevBtn").addEventListener("click", goPrev);
+  $("nextBtn").addEventListener("click", ()=>goNext(false));
+  $("markClearBtn").addEventListener("click", ()=>{
+    const qi = order[qIndex];
+    answers[qi] = null; renderQuestion(); highlightPalette(); persist();
+  });
+
+  // palette
+  function renderPalette(){
+    palette.innerHTML = "";
+    for(let i=0;i<questions.length;i++){
+      const b = document.createElement("button");
+      b.className = "qbtn";
+      b.textContent = (i+1);
+      b.addEventListener("click", ()=>{ qIndex=i; renderQuestion(); qLeft = perQ; });
+      palette.appendChild(b);
+    }
+    highlightPalette();
+  }
+  function highlightPalette(){
+    const btns = palette.querySelectorAll(".qbtn");
+    btns.forEach((b,i)=>{
+      b.classList.remove("current","answered");
+      if(i===qIndex) b.classList.add("current");
+      const qi = order[i];
+      if(answers[qi]!==null) b.classList.add("answered");
+    });
+  }
+
+  // Submit
+  $("submitBtn").addEventListener("click", ()=>{
+    const unattempted = answers.filter(a=>a===null).length;
+    if(unattempted>0 && !confirm(`You have ${unattempted} unattempted. Submit?`)) return;
+    submitTest();
+  });
+
+  function submitTest(){
+    if(totalTimerId) clearInterval(totalTimerId);
+    if(qTimerId) clearInterval(qTimerId);
+
+    // Evaluate
+    let correct=0, wrong=0;
+    const detail = [];
+    for(let i=0;i<questions.length;i++){
+      const q = questions[order[i]]; // displayed order index
+      const chosenIdx = answers[order[i]]; // chosen in displayed option index
+      const oidx = optionOrders[order[i]];
+      const correctOriginal = q.answer;
+      let chosenOriginal = null;
+      if(chosenIdx!==null) chosenOriginal = oidx[chosenIdx];
+
+      const isCorrect = (chosenOriginal === correctOriginal);
+      if(chosenIdx===null) { /* unattempted */ }
+      else if(isCorrect) correct++; else wrong++;
+
+      detail.push({
+        i: i+1,
+        q: q.q,
+        options: q.options,
+        chosenOriginal,
+        correctOriginal,
+        explain: q.explain || ""
+      });
+    }
+
+    const marks = correct - (wrong * neg);
+    const total = questions.length;
+    const acc = total ? Math.round((correct/total)*100) : 0;
+
+    // Time taken
+    const elapsed = Math.floor((Date.now()-startedAt)/1000);
+    const tt = fmtTime(elapsed);
+
+    // Fill result UI
+    $("scoreOut").textContent = `${marks.toFixed(2)} / ${total}`;
+    $("correctOut").textContent = correct;
+    $("wrongOut").textContent = wrong;
+    $("unattemptedOut").textContent = answers.filter(a=>a===null).length;
+    $("accOut").textContent = acc+"%";
+    $("timeOut").textContent = tt;
+
+    // Review table
+    const tbody = $("reviewTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    detail.forEach((d)=>{
+      const tr = document.createElement("tr");
+      const your = d.chosenOriginal===null ? "-" : String.fromCharCode(65 + d.chosenOriginal);
+      const corr = String.fromCharCode(65 + d.correctOriginal);
+      const res = d.chosenOriginal===null ? "—" : (d.chosenOriginal===d.correctOriginal ? "✔" : "✘");
+      tr.innerHTML = `<td>${d.i}</td>
+        <td>${d.q}</td>
+        <td>${your}</td>
+        <td>${corr}</td>
+        <td>${res}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    // Explanations
+    const exp = $("explanations");
+    exp.innerHTML = "";
+    detail.forEach((d)=>{
+      const div = document.createElement("div");
+      div.className = "exp";
+      div.innerHTML = `<b>Q${d.i}.</b> ${d.q}<br/><b>Correct:</b> ${String.fromCharCode(65 + d.correctOriginal)}<br/>${d.explain?("<div class='small muted'>"+d.explain+"</div>"):""}`;
+      exp.appendChild(div);
+    });
+
+    // Switch screens
+    test.classList.add("hidden");
+    result.classList.remove("hidden");
+
+    // Clear saved
+    if(saveProgress) localStorage.removeItem("cbt_"+quizId);
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener("keydown", (e)=>{
+    const k = e.key.toLowerCase();
+    if(test.classList.contains("hidden")) return;
+
+    if(["1","2","3","4"].includes(k)){
+      const i = Number(k)-1;
+      const qi = order[qIndex];
+      const optCount = optionOrders[qi].length;
+      if(i<optCount) selectOption(i);
+    } else if(k==="n"){ goNext(false); }
+    else if(k==="p"){ goPrev(); }
+    else if(k==="s"){ submitTest(); }
+  });
+
+  // Persist / Restore
+  function persist(){
+    if(!saveProgress) return;
+    const data = {
+      answers, order, optionOrders, qIndex, totalLeft, qLeft, startedAt, perQ, totalMin, neg, questions
+    };
+    localStorage.setItem("cbt_"+quizId, JSON.stringify(data));
+  }
+  function restoreSaved(){
+    try{
+      const raw = localStorage.getItem("cbt_"+quizId);
+      if(!raw) return;
+      const data = JSON.parse(raw);
+      if(!data || !Array.isArray(data.questions)) return;
+      // restore minimal to avoid cross-set issues
+      if(confirm("Previous progress found for this Quiz ID. Resume?")){
+        questions = data.questions;
+        answers = data.answers;
+        order = data.order;
+        optionOrders = data.optionOrders;
+        qIndex = data.qIndex;
+        totalLeft = data.totalLeft;
+        qLeft = data.qLeft;
+        startedAt = data.startedAt;
+        perQ = data.perQ;
+        totalMin = data.totalMin;
+        neg = data.neg;
+        // update UI bits
+        $("perQuestionSeconds").value = perQ;
+        $("totalMinutes").value = totalMin;
+        $("negMark").value = neg;
+        renderQuestion();
+        renderPalette();
+        updateHeader();
+      }
+    }catch(e){ /* ignore */ }
+  }
+
+  // Export results
+  $("exportBtn").addEventListener("click", ()=>{
+    const data = {
+      score: $("scoreOut").textContent,
+      correct: Number($("correctOut").textContent),
+      wrong: Number($("wrongOut").textContent),
+      unattempted: Number($("unattemptedOut").textContent),
+      accuracy: $("accOut").textContent,
+      timeTaken: $("timeOut").textContent,
+      timestamp: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "cbt_result.json";
+    a.click();
+  });
+
+})();</script>
+</body>
+</html>
